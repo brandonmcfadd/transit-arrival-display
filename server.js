@@ -80,10 +80,10 @@ fastify.get('/api/cta-arrivals', async (request, reply) => {
 
     if (uncachedStpids.length > 0) {
       const apiUrl = `https://lapi.transitchicago.com/api/1.0/ttarrivals.aspx?key=${process.env.TRAIN_API_KEY}&stpid=${uncachedStpids.join(',')}&outputType=JSON&max=500`;
-      console.log(apiUrl)
       fetchTasks.push(fetch(apiUrl)
         .then(res => {
           if (!res.ok) throw new Error('Failed to fetch CTA data');
+          console.log(res)
           return res.json();
         })
         .then(apiData => {
