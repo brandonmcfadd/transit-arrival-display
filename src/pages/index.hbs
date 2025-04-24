@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>CTA Arrivals</title>
+  <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      background-color: #000;
+      font-family: Arial, sans-serif;
+      color: white;
+    }
+
+    .bold {
+      font-weight: bold;
+    }
+
+    .arrivals {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    .loading {
+      flex-grow: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 5vw;
+    }
+
+    #arrivalContainer {
+      display: flex;
+      flex-direction: column;
+      flex-grow: 1;
+      overflow-y: auto;
+      width: 100%;
+      gap: 1px;
+    }
+
+    .train-entry {
+      display: flex;
+      width: 100%;
+      height: 100vh;
+      background-color: var(--line-color, #000);
+      /* Default to black */
+      color: white;
+      /* Default text color */
+    }
+
+    .train-entry-number {
+      background-color: #333;
+      color: #ddd;
+      font-weight: bold;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+      font-size: 1.25rem;
+      display: flex;
+      align-items: center;
+      text-align: center;
+      width: 1.5rem;
+    }
+
+    .train-entry-body {
+      flex-grow: 1;
+      padding: 0.25em 0.5em;
+      display: flex;
+      align-items: center;
+    }
+
+    .train-entry-details {
+      display: flex;
+      flex-direction: column;
+      flex-grow: 1;
+    }
+
+    .train-entry-run-info {
+      font-size: 1.5rem;
+    }
+
+    .train-entry-dest {
+      font-weight: bold;
+      font-size: 3rem;
+    }
+
+    .train-entry-timing {
+      font-size: 3rem;
+    }
+
+    .train-entry-tracking img {
+      height: 2.5rem;
+      width: auto;
+      padding: 0 1.7vw;
+    }
+
+    .train-entry[data-line="yellow"] {
+      color: black;
+      /* Yellow line text should be black */
+    }
+
+    .inverted {
+      background-color: white !important;
+      color: var(--line-color) !important;
+      /* Set text color dynamically */
+    }
+  </style>
+</head>
+
+<body>
+  <div class="arrivals">
+    <div class="loading">Loading...</div>
+    <div id="arrivalContainer" style="display: none;"></div>
+  </div>
+
+  <script>
+    const routeColors = {
+      red: '#C60C30',
+      blue: '#00A1DE',
+      brown: '#62361B',
+      green: '#009B3A',
+      orange: '#F9461C',
+      pink: '#E27EA6',
+      purple: '#522398',
+      yellow: '#F9E300',
+    };
+    const imageCache = new Map();
+
+    function getCachedImage(src) {
+      if (!imageCache.has(src)) {
+        const img = new Image();
+        img.src = src;
+        img.alt = "Tracking";
+        img.loading = "lazy";
+        imageCache.set(src, img);
+      }
+      return imageCache.get(src).cloneNode(true);
+    }
+
+    function getUrlParams() {
+      const params = new URLSearchParams(window.location.search);
+      let paramsObj = {};
+      for (const [key, value] of params) {
+        paramsObj[key] = value;
+      }
+      return paramsObj;
+    }
+
+    function getRouteColor(route) {
+      return routeColors[route.toLowerCase()] || '#ffffff';
+    }
+
+    async function fetchArrivals() {
+      const container = document.getElementById('arrivalContainer');
+
+      // Start fade out
+      container.classList.remove('fade-in');
+      container.classList.add('fade-out');
+
+      // Wait 1 second for fade out to finish
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      const params = getUrlParams();
+      const url = new URL('/api/cta-arrivals', window.location.origin);
+      Object.keys(params).forEach(key => {
+        url.searchParams.append(key, params[key]);
+      });
+
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Failed to fetch data');
+        const data = await response.json();
+
+        document.querySelector('.loading').style.display = 'none';
+        container.style.display = 'flex';
+        container.innerHTML = '';
+
+        // Sort and render entries
+        data.sort((a, b) => a.arrivalTime - b.arrivalTime);
+        const vh = window.innerHeight;
+        const maxEntries = vh / 90;
+        const rowHeight = `6rem`;
+
+        data.slice(0, maxEntries).forEach((arrival, index) => {
+          const line = arrival.route;
+          const lineColor = getRouteColor(line);
+          const lineKey = line.toLowerCase();
+          const isInverted = arrival.destination === 'Cottage Grove' || arrival.destination === 'UIC-Halsted';
+
+          const trainEntry = document.createElement('div');
+          trainEntry.classList.add('train-entry');
+          trainEntry.setAttribute('data-line', lineKey);
+          trainEntry.style.setProperty('--line-color', lineColor);
+          trainEntry.style.height = rowHeight;
+          if (isInverted) trainEntry.classList.add('inverted');
+
+          let timingDisplay;
+          if (arrival.isArriving === "1" || arrival.arrivalTime === 0 || arrival.arrivalTime === 1) {
+            timingDisplay = '<span class="bold">Due</span>';
+          } else if (arrival.isDelayed === "1" && arrival.isScheduled === "0") {
+            timingDisplay = '<span class="bold">Delayed</span>';
+          } else {
+            timingDisplay = `<span class="bold">${arrival.arrivalTime}</span> min`;
+          }
+
+          let trackingIcon = arrival.isScheduled === "1"
+            ? (isInverted ? `/images/${lineKey}-scheduled.svg` : '/images/scheduled.svg')
+            : (isInverted ? `/images/${lineKey}-live-tracked.svg` : '/images/live-tracked.svg');
+
+          trainEntry.innerHTML = `
+        <div class="train-entry-number">${index + 1}</div>
+        <div class="train-entry-body">
+          <div class="train-entry-details">
+            <span class="train-entry-run-info">${line} Line #${arrival.routeNumber} at ${arrival.stationName} to</span>
+            <span class="train-entry-dest">
+              ${arrival.destination}
+              ${['Midway', "O'Hare"].includes(arrival.destination) ? '<img src="/images/icon_ttairport.svg" alt="Airport" style="height: 2.5rem; vertical-align: middle;" />' : ''}
+            </span>
+          </div>
+          <div class="train-entry-timing">${timingDisplay}</div>
+        </div>
+      `;
+
+          const trackingImg = getCachedImage(trackingIcon);
+          const trackingDiv = document.createElement('div');
+          trackingDiv.classList.add('train-entry-tracking');
+          trackingDiv.appendChild(trackingImg);
+          trainEntry.querySelector('.train-entry-body').appendChild(trackingDiv);
+
+          container.appendChild(trainEntry);
+        });
+
+        // Fade back in
+        container.classList.remove('fade-out');
+        container.classList.add('fade-in');
+
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        document.querySelector('.loading').textContent = 'Failed to load data.';
+      }
+    }
+
+    window.onload = () => {
+      fetchArrivals();
+      setInterval(fetchArrivals, 60000);
+    };
+
+  </script>
+</body>
+
+</html>
