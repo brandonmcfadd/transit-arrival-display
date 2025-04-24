@@ -161,28 +161,6 @@ function groupByRouteAndDirection(eta, ignoreItems) {
   return filteredArrivals;
 }
 
-async function testConnectivity() {
-  try {
-    const response = await fetch('https://cyberninja.requestcatcher.com/test', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/plain',
-      },
-      body: 'Hello World!',
-    });
-
-    if (!response.ok) {
-      throw new Error(`Request failed with status ${response.status}`);
-    }
-
-    console.log('Test request sent successfully!');
-  } catch (error) {
-    console.error('Error sending test request:', error);
-  }
-}
-
-testConnectivity()
-
 // Run the server and report out to the logs
 fastify.listen(
   { port: Number(process.env.PORT ?? 3000), host: "0.0.0.0" },
