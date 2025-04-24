@@ -190,7 +190,7 @@
         // Sort and render entries
         data.sort((a, b) => a.arrivalTime - b.arrivalTime);
         const vh = window.innerHeight;
-        const maxEntries = vh / 90;
+        const maxEntries = vh / 95;
         const rowHeight = `6rem`;
 
         data.slice(0, maxEntries).forEach((arrival, index) => {
