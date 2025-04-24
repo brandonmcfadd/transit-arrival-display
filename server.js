@@ -17,6 +17,7 @@ require('dotenv').config();
 
 const storage = require('node-persist');
 const cache = require('nano-cache');
+const { exec } = require('child_process');
 
 // Setup our static files
 fastify.register(require("@fastify/static"), {
@@ -83,7 +84,6 @@ fastify.get('/api/cta-arrivals', async (request, reply) => {
       fetchTasks.push(fetch(apiUrl)
         .then(res => {
           if (!res.ok) throw new Error('Failed to fetch CTA data');
-          console.log(res)
           return res.json();
         })
         .then(apiData => {
@@ -161,6 +161,25 @@ function groupByRouteAndDirection(eta, ignoreItems) {
 
   return filteredArrivals;
 }
+
+function testConnectivity() {
+  exec('ping -c 4 8.8.8.8', (error, stdout, stderr) => {
+    if (error) {
+      console.error(`Ping failed: ${error.message}`);
+      return;
+    }
+
+    if (stderr) {
+      console.error(`Ping stderr: ${stderr}`);
+      return;
+    }
+
+    console.log(`Ping results:\n${stdout}`);
+  });
+}
+
+// Call it to test
+testConnectivity();
 
 // Run the server and report out to the logs
 fastify.listen(
