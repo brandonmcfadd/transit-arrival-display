@@ -162,25 +162,6 @@ function groupByRouteAndDirection(eta, ignoreItems) {
   return filteredArrivals;
 }
 
-function testConnectivity() {
-  exec('ping -c 4 8.8.8.8', (error, stdout, stderr) => {
-    if (error) {
-      console.error(`Ping failed: ${error.message}`);
-      return;
-    }
-
-    if (stderr) {
-      console.error(`Ping stderr: ${stderr}`);
-      return;
-    }
-
-    console.log(`Ping results:\n${stdout}`);
-  });
-}
-
-// Call it to test
-testConnectivity();
-
 // Run the server and report out to the logs
 fastify.listen(
   { port: Number(process.env.PORT ?? 3000), host: "0.0.0.0" },
