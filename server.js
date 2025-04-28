@@ -46,81 +46,71 @@ fastify.get("/", async function (request, reply) {
   return reply.view("/src/pages/index.hbs");
 });
 
-const CACHE_DURATION = 60 * 1000; // Cache for 60 seconds
+const CACHE_DURATION = 59 * 1000; // Cache for 60 seconds
 
 fastify.get('/api/cta-arrivals', async (request, reply) => {
-  let stpids = request.query.stpid || 40380;
-  const ignoreMinutes = request.query.walkTime || -1;
+  const { stpid, mapid, walkTime } = request.query;
+  const ignoreMinutes = walkTime || -1;
 
-  // Ensure stpids is an array
-  if (!Array.isArray(stpids)) {
-    stpids = String(stpids).split(',').map(s => s.trim());
-  }
+  // Decide which type we're working with
+  let ids = null;
+  let idType = null;
 
-  if (stpids.length === 0) {
-    return reply.status(400).send({ error: 'At least one stpid is required' });
+  if (stpid) {
+    ids = Array.isArray(stpid) ? stpid : [stpid];
+    idType = 'stpid';
+  } else if (mapid) {
+    ids = Array.isArray(mapid) ? mapid : [mapid];
+    idType = 'mapid';
+  } else {
+    return reply.status(400).send({ error: 'Either stpid or mapid query parameter is required' });
   }
 
   const now = Date.now();
 
-  const CACHE_DURATION = 15 * 1000; // Example: 15 seconds
-  const BATCH_SIZE = 4;
+  // Create a cache key based on the idType and ids
+  const cacheKey = `${idType}-${ids.join(',')}`;
 
-  let allArrivals = [];
-
-  // Check which stpids can be served from cache
-  const fetchTasks = [];
-
-  for (let i = 0; i < stpids.length; i += BATCH_SIZE) {
-    const batch = stpids.slice(i, i + BATCH_SIZE);
-
-    // Check cache for each in the batch
-    const uncachedStpids = batch.filter(stpid =>
-      !cache[stpid] || now - cache[stpid].lastFetchTime >= CACHE_DURATION
-    );
-
-    if (uncachedStpids.length > 0) {
-      const apiUrl = `https://lapi.transitchicago.com/api/1.0/ttarrivals.aspx?key=${process.env.TRAIN_API_KEY}&stpid=${uncachedStpids.join(',')}&outputType=JSON&max=500`;
-      fetchTasks.push(fetch(apiUrl)
-        .then(res => {
-          if (!res.ok) throw new Error('Failed to fetch CTA data');
-          return res.json();
-        })
-        .then(apiData => {
-          const arrivals = groupByRouteAndDirection(apiData.ctatt.eta || [], ignoreMinutes);
-          // Cache each stpid in the batch
-          for (const id of uncachedStpids) {
-            cache[id] = {
-              data: arrivals,
-              lastFetchTime: now,
-            };
-          }
-          return arrivals;
-        })
-        .catch(err => {
-          console.error(`Error fetching for stpids ${uncachedStpids.join(',')}:`, err.message);
-          return [];
-        }));
-    }
-
-    // Add cached data
-    for (const id of batch) {
-      if (cache[id] && now - cache[id].lastFetchTime < CACHE_DURATION) {
-        allArrivals.push(...cache[id].data);
-      }
-    }
+  // Check if we have cached data for this key and it hasn't expired
+  if (cache[cacheKey] && now - cache[cacheKey].lastFetchTime < CACHE_DURATION) {
+    return reply.send(cache[cacheKey].data);
   }
 
   try {
-    const newArrivals = await Promise.all(fetchTasks);
-    newArrivals.forEach(arr => allArrivals.push(...arr));
+    let results = [];
 
-    // Sort all arrivals by timestamp or arrivalTime if needed
-    allArrivals.sort((a, b) => a.arrivalTime - b.arrivalTime);
+    // Split into batches of 4
+    const batchSize = 4;
+    for (let i = 0; i < ids.length; i += batchSize) {
+      const batch = ids.slice(i, i + batchSize);
+      const batchQuery = batch.map(id => `${idType}=${id}`).join('&');
+      console.log(batchQuery)
 
-    return reply.send(allArrivals);
+      const apiUrl = `https://lapi.transitchicago.com/api/1.0/ttarrivals.aspx?key=${process.env.TRAIN_API_KEY}&${batchQuery}&outputType=JSON&max=500`;
+      console.log(apiUrl)
+      const response = await fetch(apiUrl);
+      if (!response.ok) throw new Error(`Failed to fetch data for batch starting with ${batch[0]}`);
+
+      const data = await response.json();
+      if (data.ctatt && data.ctatt.eta) {
+        results = results.concat(data.ctatt.eta);
+      }
+    }
+
+    // Process the combined results
+    const groupedData = groupByRouteAndDirection(results, ignoreMinutes);
+
+    // Cache it
+    cache[cacheKey] = {
+      data: groupedData,
+      lastFetchTime: now,
+    };
+
+    return reply.send(groupedData);
+
   } catch (error) {
-    return reply.status(500).send({ error: 'Failed to fetch some or all CTA data', details: error.message });
+    console.error('Error fetching arrivals:', error);
+    return reply.status(500).send({ error: 'Failed to fetch data from CTA API', details: error.message });
   }
 });
 
