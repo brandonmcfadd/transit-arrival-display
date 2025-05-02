@@ -128,9 +128,10 @@ function groupByRouteAndDirection(eta, ignoreItems) {
 
   const filteredArrivals = eta
     .map((item) => {
-      const { rt, staNm, stpDe, arrT, rn, destNm, isSch, isApp, isDly } = item;
+      const { rt, staNm, stpDe, arrT, prdt, rn, destNm, isSch, isApp, isDly } = item;
       const arrivalDate = new Date(arrT);
-      const diffInMinutes = Math.floor((arrivalDate - currentTime) / (1000 * 60));
+      const predictionDate = new Date(prdt);
+      const diffInMinutes = Math.floor((arrivalDate - predictionDate) / (1000 * 60));
 
       if (diffInMinutes < ignoreItems) return null;
 
