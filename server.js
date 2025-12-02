@@ -137,7 +137,6 @@ function groupByRouteAndDirection(eta, ignoreItems) {
         console.log("found holiday train")
       else
         isHolidayTrain = false
-        console.log("did not find holiday train")
 
       if (diffInMinutes < ignoreItems) return null;
 

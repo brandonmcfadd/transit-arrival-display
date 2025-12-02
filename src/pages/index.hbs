@@ -118,8 +118,14 @@
     }
 
     .holidayTrain {
-      background: #C52233;
-      background: linear-gradient(90deg, rgba(197, 34, 51, 1) 0%, rgba(56, 102, 65, 1) 71%);
+      background: #C60C30;
+      background: linear-gradient(125deg, rgba(198, 12, 48, 1) 0%, rgba(0, 155, 58, 1) 50%, rgba(198, 12, 48, 1) 100%);
+    }
+
+    .train-entry-candy-cane img {
+      height: 2.5rem;
+      width: auto;
+      padding: 0 1.7vw;
     }
   </style>
 </head>
@@ -210,23 +216,27 @@
           trainEntry.setAttribute('data-line', lineKey);
           trainEntry.style.setProperty('--line-color', lineColor);
           trainEntry.style.height = rowHeight;
-        if (isHoliday is true) trainEntry.classList.add('holidayTrain')
-        if (isInverted) trainEntry.classList.add('inverted');
+          if (isHolidayTrain === true) trainEntry.classList.add('holidayTrain')
+          if (isInverted) trainEntry.classList.add('inverted');
 
-        let timingDisplay;
-        if (arrival.isArriving === "1" || arrival.arrivalTime === 0 || arrival.arrivalTime === 1) {
-          timingDisplay = '<span class="bold">Due</span>';
-        } else if (arrival.isDelayed === "1" && arrival.isScheduled === "0") {
-          timingDisplay = '<span class="bold">Delayed</span>';
-        } else {
-          timingDisplay = `<span class="bold">${arrival.arrivalTime}</span> min`;
-        }
+          let timingDisplay;
+          if (arrival.isArriving === "1" || arrival.arrivalTime === 0 || arrival.arrivalTime === 1) {
+            timingDisplay = '<span class="bold">Due</span>';
+          } else if (arrival.isDelayed === "1" && arrival.isScheduled === "0") {
+            timingDisplay = '<span class="bold">Delayed</span>';
+          } else {
+            timingDisplay = `<span class="bold">${arrival.arrivalTime}</span> min`;
+          }
 
-        let trackingIcon = arrival.isScheduled === "1"
-          ? (isInverted ? `/images/${lineKey}-scheduled.svg` : '/images/scheduled.svg')
-          : (isInverted ? `/images/${lineKey}-live-tracked.svg` : '/images/live-tracked.svg');
+          let trackingIcon = arrival.isScheduled === "1"
+            ? (isInverted ? `/images/${lineKey}-scheduled.svg` : '/images/scheduled.svg')
+            : (isInverted ? `/images/${lineKey}-live-tracked.svg` : '/images/live-tracked.svg');
 
-        trainEntry.innerHTML = `
+          let candyCane = isHolidayTrain === true
+            ? (isHolidayTrain ? `/images/candycane.svg` : '/images/candycane.svg')
+            : (isHolidayTrain ? `/images/candycane.svg` : '/images/candycane.svg');
+
+          trainEntry.innerHTML = `
         <div class="train-entry-number">${index + 1}</div>
         <div class="train-entry-body">
           <div class="train-entry-details">
@@ -234,29 +244,30 @@
             <span class="train-entry-dest">
               ${arrival.destination}
               ${['Midway', "O'Hare"].includes(arrival.destination) ? '<img src="/images/icon_ttairport.svg" alt="Airport" style="height: 2.5rem; vertical-align: middle;" />' : ''}
+              ${[true].includes(isHolidayTrain) ? '<img src="/images/candycane.svg" alt="Airport" style="height: 2.5rem; vertical-align: middle;" />' : ''}
             </span>
           </div>
           <div class="train-entry-timing">${timingDisplay}</div>
         </div>
       `;
 
-        const trackingImg = getCachedImage(trackingIcon);
-        const trackingDiv = document.createElement('div');
-        trackingDiv.classList.add('train-entry-tracking');
-        trackingDiv.appendChild(trackingImg);
-        trainEntry.querySelector('.train-entry-body').appendChild(trackingDiv);
+          const trackingImg = getCachedImage(trackingIcon);
+          const trackingDiv = document.createElement('div');
+          trackingDiv.classList.add('train-entry-tracking');
+          trackingDiv.appendChild(trackingImg);
+          trainEntry.querySelector('.train-entry-body').appendChild(trackingDiv);
 
-        container.appendChild(trainEntry);
-      });
+          container.appendChild(trainEntry);
+        });
 
-      // Fade back in
-      container.classList.remove('fade-out');
-      container.classList.add('fade-in');
+        // Fade back in
+        container.classList.remove('fade-out');
+        container.classList.add('fade-in');
 
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      document.querySelector('.loading').textContent = 'Failed to load data.';
-    }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        document.querySelector('.loading').textContent = 'Failed to load data.';
+      }
     }
 
     window.onload = () => {
