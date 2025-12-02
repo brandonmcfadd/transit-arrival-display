@@ -116,6 +116,11 @@
       color: var(--line-color) !important;
       /* Set text color dynamically */
     }
+
+    .holidayTrain {
+      background: #C52233;
+      background: linear-gradient(90deg, rgba(197, 34, 51, 1) 0%, rgba(56, 102, 65, 1) 71%);
+    }
   </style>
 </head>
 
@@ -198,28 +203,30 @@
           const lineColor = getRouteColor(line);
           const lineKey = line.toLowerCase();
           const isInverted = arrival.destination === 'Cottage Grove' || arrival.destination === 'UIC-Halsted';
+          const isHolidayTrain = arrival.isHoliday
 
           const trainEntry = document.createElement('div');
           trainEntry.classList.add('train-entry');
           trainEntry.setAttribute('data-line', lineKey);
           trainEntry.style.setProperty('--line-color', lineColor);
           trainEntry.style.height = rowHeight;
-          if (isInverted) trainEntry.classList.add('inverted');
+        if (isHoliday is true) trainEntry.classList.add('holidayTrain')
+        if (isInverted) trainEntry.classList.add('inverted');
 
-          let timingDisplay;
-          if (arrival.isArriving === "1" || arrival.arrivalTime === 0 || arrival.arrivalTime === 1) {
-            timingDisplay = '<span class="bold">Due</span>';
-          } else if (arrival.isDelayed === "1" && arrival.isScheduled === "0") {
-            timingDisplay = '<span class="bold">Delayed</span>';
-          } else {
-            timingDisplay = `<span class="bold">${arrival.arrivalTime}</span> min`;
-          }
+        let timingDisplay;
+        if (arrival.isArriving === "1" || arrival.arrivalTime === 0 || arrival.arrivalTime === 1) {
+          timingDisplay = '<span class="bold">Due</span>';
+        } else if (arrival.isDelayed === "1" && arrival.isScheduled === "0") {
+          timingDisplay = '<span class="bold">Delayed</span>';
+        } else {
+          timingDisplay = `<span class="bold">${arrival.arrivalTime}</span> min`;
+        }
 
-          let trackingIcon = arrival.isScheduled === "1"
-            ? (isInverted ? `/images/${lineKey}-scheduled.svg` : '/images/scheduled.svg')
-            : (isInverted ? `/images/${lineKey}-live-tracked.svg` : '/images/live-tracked.svg');
+        let trackingIcon = arrival.isScheduled === "1"
+          ? (isInverted ? `/images/${lineKey}-scheduled.svg` : '/images/scheduled.svg')
+          : (isInverted ? `/images/${lineKey}-live-tracked.svg` : '/images/live-tracked.svg');
 
-          trainEntry.innerHTML = `
+        trainEntry.innerHTML = `
         <div class="train-entry-number">${index + 1}</div>
         <div class="train-entry-body">
           <div class="train-entry-details">
@@ -233,23 +240,23 @@
         </div>
       `;
 
-          const trackingImg = getCachedImage(trackingIcon);
-          const trackingDiv = document.createElement('div');
-          trackingDiv.classList.add('train-entry-tracking');
-          trackingDiv.appendChild(trackingImg);
-          trainEntry.querySelector('.train-entry-body').appendChild(trackingDiv);
+        const trackingImg = getCachedImage(trackingIcon);
+        const trackingDiv = document.createElement('div');
+        trackingDiv.classList.add('train-entry-tracking');
+        trackingDiv.appendChild(trackingImg);
+        trainEntry.querySelector('.train-entry-body').appendChild(trackingDiv);
 
-          container.appendChild(trainEntry);
-        });
+        container.appendChild(trainEntry);
+      });
 
-        // Fade back in
-        container.classList.remove('fade-out');
-        container.classList.add('fade-in');
+      // Fade back in
+      container.classList.remove('fade-out');
+      container.classList.add('fade-in');
 
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        document.querySelector('.loading').textContent = 'Failed to load data.';
-      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      document.querySelector('.loading').textContent = 'Failed to load data.';
+    }
     }
 
     window.onload = () => {

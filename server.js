@@ -132,6 +132,12 @@ function groupByRouteAndDirection(eta, ignoreItems) {
       const arrivalDate = new Date(arrT);
       const predictionDate = new Date(prdt);
       const diffInMinutes = Math.floor((arrivalDate - predictionDate) / (1000 * 60));
+      if ( rn == "1225" )
+        isHolidayTrain = true,
+        console.log("found holiday train")
+      else
+        isHolidayTrain = false
+        console.log("did not find holiday train")
 
       if (diffInMinutes < ignoreItems) return null;
 
@@ -145,6 +151,7 @@ function groupByRouteAndDirection(eta, ignoreItems) {
         isScheduled: isSch,
         isArriving: isApp,
         isDelayed: isDly, 
+        isHoliday: isHolidayTrain,
       };
     })
     .filter(Boolean) // remove nulls
