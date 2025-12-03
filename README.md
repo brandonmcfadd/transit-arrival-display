@@ -134,3 +134,7 @@ server.js # Main server file
 - **Caching**: Arrival data is cached in memory for 60 seconds to avoid repeated API calls.  
 - **Holiday Trains**: Routes 1224 and 1225 are flagged as holiday-specific trains.  
 - **Data Processing**: Arrival data is filtered, grouped, and sorted by minutes until arrival before being returned.
+
+## Screenshot(s)
+![DisplayExample](./examples/screenshot.png)
+In this screenshot, Brown Line #406 is shown as a Pride Train, and Blue Line #111 is shown as a Holiday Train
