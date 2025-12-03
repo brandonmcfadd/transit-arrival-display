@@ -28,7 +28,7 @@ fastify.register(require("@fastify/static"), {
 // View is a templating manager for fastify
 const handlebars = require('handlebars');
 
-handlebars.registerHelper('toJSON', function(object){
+handlebars.registerHelper('toJSON', function (object) {
   return new handlebars.SafeString(JSON.stringify(object));
 });
 
@@ -36,12 +36,11 @@ fastify.register(require("@fastify/view"), {
   engine: {
     handlebars: handlebars,
   },
-}); 
+});
 
 const fs = require('fs');
-const prizes = JSON.parse(fs.readFileSync(path.join(__dirname, 'src/prizes.json')));
 
-fastify.get("/", async function (request, reply) {  
+fastify.get("/", async function (request, reply) {
   // The Handlebars code will be able to access the parameter values and build them into the page
   return reply.view("/src/pages/index.hbs");
 });
@@ -53,18 +52,19 @@ fastify.get('/api/cta-arrivals', async (request, reply) => {
   const ignoreMinutes = walkTime || -1;
 
   // Decide which type we're working with
-  let ids = null;
-  let idType = null;
+  let ids;
+  let idType;
 
   if (stpid) {
-    ids = Array.isArray(stpid) ? stpid : [stpid];
-    idType = 'stpid';
+    ids = Array.isArray(stpid) ? stpid : stpid.split(','); // <--- split here
+    idType = "stpid";
   } else if (mapid) {
-    ids = Array.isArray(mapid) ? mapid : [mapid];
-    idType = 'mapid';
+    ids = Array.isArray(mapid) ? mapid : mapid.split(',');
+    idType = "mapid";
   } else {
-    return reply.status(400).send({ error: 'Either stpid or mapid query parameter is required' });
+    return reply.status(400).send({ error: "Either stpid or mapid query parameter is required" });
   }
+
 
   const now = Date.now();
 
@@ -79,23 +79,24 @@ fastify.get('/api/cta-arrivals', async (request, reply) => {
   try {
     let results = [];
 
-    // Split into batches of 4
     const batchSize = 4;
+    const batches = [];
+
     for (let i = 0; i < ids.length; i += batchSize) {
       const batch = ids.slice(i, i + batchSize);
       const batchQuery = batch.map(id => `${idType}=${id}`).join('&');
-      console.log(batchQuery)
-
       const apiUrl = `https://lapi.transitchicago.com/api/1.0/ttarrivals.aspx?key=${process.env.TRAIN_API_KEY}&${batchQuery}&outputType=JSON&max=500`;
-      console.log(apiUrl)
-      const response = await fetch(apiUrl);
-      if (!response.ok) throw new Error(`Failed to fetch data for batch starting with ${batch[0]}`);
+      batches.push(fetch(apiUrl).then(res => res.json()));
+    }
 
-      const data = await response.json();
+    const allData = await Promise.all(batches);
+
+    allData.forEach(data => {
       if (data.ctatt && data.ctatt.eta) {
         results = results.concat(data.ctatt.eta);
       }
-    }
+    });
+
 
     // Process the combined results
     const groupedData = groupByRouteAndDirection(results, ignoreMinutes);
@@ -128,15 +129,22 @@ function groupByRouteAndDirection(eta, ignoreItems) {
 
   const filteredArrivals = eta
     .map((item) => {
-      const { rt, staNm, stpDe, arrT, prdt, rn, destNm, isSch, isApp, isDly } = item;
+      const { rt, staNm, stpDe, arrT, prdt, rn, destNm, isSch, isApp, isDly, flags } = item;
       const arrivalDate = new Date(arrT);
       const predictionDate = new Date(prdt);
       const diffInMinutes = Math.floor((arrivalDate - predictionDate) / (1000 * 60));
-      if ( rn == 1224 || rn == 1225 )
+      const runFlags = toString(flags)
+      if ((rn == 1224 || rn == 1225) && runFlags.contains("H"))
         isHolidayTrain = true,
-        console.log("found holiday train")
+          console.log("found holiday train")
       else
         isHolidayTrain = false
+
+      if (rn != 1224 && rn != 1225 && runFlags.includes("H"))
+        isPrideTrain = true,
+          console.log("found pride train")
+      else
+        isPrideTrain = false
 
       if (diffInMinutes < ignoreItems) return null;
 
@@ -149,8 +157,9 @@ function groupByRouteAndDirection(eta, ignoreItems) {
         destination: destNm,
         isScheduled: isSch,
         isArriving: isApp,
-        isDelayed: isDly, 
+        isDelayed: isDly,
         isHoliday: isHolidayTrain,
+        isPride: isPrideTrain,
       };
     })
     .filter(Boolean) // remove nulls

@@ -123,6 +123,11 @@
       background: linear-gradient(125deg, rgba(198, 12, 48, 1) 0%, rgba(0, 155, 58, 1) 10%, rgba(198, 12, 48, 1) 20%, rgba(0, 155, 58, 1) 30%, rgba(198, 12, 48, 1) 40%, rgba(0, 155, 58, 1) 50%, rgba(198, 12, 48, 1) 60%, rgba(0, 155, 58, 1) 70%, rgba(198, 12, 48, 1) 80%, rgba(0, 155, 58, 1) 90%, rgba(198, 12, 48, 1) 100%);
     }
 
+    .prideTrain {
+      background: #C60C30;
+      background: linear-gradient(125deg, rgba(198, 12, 48, 1) 0%, rgba(249, 70, 28, 1) 15%, rgba(249, 227, 0, 1) 30%, rgba(0, 155, 58, 1) 44%, rgba(0, 161, 222, 1) 58%, rgba(226, 126, 166, 1) 72%, rgba(82, 35, 152, 1) 86%, rgba(98, 54, 27, 1) 100%);
+    }
+
     .train-entry-candy-cane img {
       height: 2.5rem;
       width: auto;
@@ -211,6 +216,7 @@
           const lineKey = line.toLowerCase();
           const isInverted = arrival.destination === 'Cottage Grove' || arrival.destination === 'UIC-Halsted';
           const isHolidayTrain = arrival.isHoliday
+          const isPrideTrain = arrival.isPride
 
           const trainEntry = document.createElement('div');
           trainEntry.classList.add('train-entry');
@@ -219,6 +225,7 @@
           trainEntry.style.height = rowHeight;
           if (isInverted) trainEntry.classList.add('inverted');
           if (isHolidayTrain === true) trainEntry.classList.add('holidayTrain')
+          if (isPrideTrain === true) trainEntry.classList.add('prideTrain')
 
           let timingDisplay;
           if (arrival.isArriving === "1" || arrival.arrivalTime === 0 || arrival.arrivalTime === 1) {
