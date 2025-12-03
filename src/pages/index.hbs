@@ -83,8 +83,8 @@
 
     .train-entry-details {
       display: flex;
+      flex: 0 0 auto;
       flex-direction: column;
-      flex-grow: 1;
     }
 
     .train-entry-run-info {
@@ -98,6 +98,7 @@
 
     .train-entry-timing {
       font-size: 3rem;
+      margin-left: auto;
     }
 
     .train-entry-tracking img {
@@ -119,7 +120,7 @@
 
     .holidayTrain {
       background: #C60C30;
-      background: linear-gradient(125deg, rgba(198, 12, 48, 1) 0%, rgba(0, 155, 58, 1) 50%, rgba(198, 12, 48, 1) 100%);
+      background: linear-gradient(125deg, rgba(198, 12, 48, 1) 0%, rgba(0, 155, 58, 1) 10%, rgba(198, 12, 48, 1) 20%, rgba(0, 155, 58, 1) 30%, rgba(198, 12, 48, 1) 40%, rgba(0, 155, 58, 1) 50%, rgba(198, 12, 48, 1) 60%, rgba(0, 155, 58, 1) 70%, rgba(198, 12, 48, 1) 80%, rgba(0, 155, 58, 1) 90%, rgba(198, 12, 48, 1) 100%);
     }
 
     .train-entry-candy-cane img {
@@ -216,8 +217,8 @@
           trainEntry.setAttribute('data-line', lineKey);
           trainEntry.style.setProperty('--line-color', lineColor);
           trainEntry.style.height = rowHeight;
-          if (isHolidayTrain === true) trainEntry.classList.add('holidayTrain')
           if (isInverted) trainEntry.classList.add('inverted');
+          if (isHolidayTrain === true) trainEntry.classList.add('holidayTrain')
 
           let timingDisplay;
           if (arrival.isArriving === "1" || arrival.arrivalTime === 0 || arrival.arrivalTime === 1) {
@@ -245,6 +246,7 @@
               ${arrival.destination}
               ${['Midway', "O'Hare"].includes(arrival.destination) ? '<img src="/images/icon_ttairport.svg" alt="Airport" style="height: 2.5rem; vertical-align: middle;" />' : ''}
               ${[true].includes(isHolidayTrain) ? '<img src="/images/candycane.svg" alt="Airport" style="height: 2.5rem; vertical-align: middle;" />' : ''}
+              ${[true].includes(isHolidayTrain) ? '<img src="images/santa-sleigh.svg" alt="Santas Sleigh" style="height: 2.5rem; vertical-align: middle;" />' : ''}
             </span>
           </div>
           <div class="train-entry-timing">${timingDisplay}</div>
