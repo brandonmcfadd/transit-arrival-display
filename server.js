@@ -132,7 +132,7 @@ function groupByRouteAndDirection(eta, ignoreItems) {
       const arrivalDate = new Date(arrT);
       const predictionDate = new Date(prdt);
       const diffInMinutes = Math.floor((arrivalDate - predictionDate) / (1000 * 60));
-      if ( rn == "1224" || rn == "1225" || rn == 1224 || rn == 1225 || rn == 839 )
+      if ( rn == 1224 || rn == 1225 )
         isHolidayTrain = true,
         console.log("found holiday train")
       else
