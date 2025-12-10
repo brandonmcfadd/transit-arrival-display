@@ -111,7 +111,7 @@ fastify.get('/api/cta-arrivals', async (request, reply) => {
     const apiUrlFollow = `https://lapi.transitchicago.com/api/1.0/ttfollow.aspx?key=${process.env.TRAIN_API_KEY}&outputType=JSON&runnumber=${holidayTrainRunNumber}`;
     holidayTrainCheck = await (fetch(apiUrlFollow).then(res => res.json()))
 
-    if (holidayTrainCheck.ctatt.errNm == null)
+    if ("eta" in holidayTrainCheck["ctatt"]) {
       routeNameMap = {
         G: 'Green',
         Brn: 'Brown',
@@ -140,7 +140,7 @@ fastify.get('/api/cta-arrivals', async (request, reply) => {
         isPride: false,
       }
       groupedData.unshift(holidayTrainItem);
-
+    }
     return reply.send(groupedData);
 
   } catch (error) {
@@ -170,13 +170,13 @@ function groupByRouteAndDirection(eta, ignoreItems) {
       const runFlags = toString(flags)
       if ((rn == 1224 || rn == 1225))
         isHolidayTrain = true,
-          console.log("found holiday train")
+        console.log("found holiday train")
       else
         isHolidayTrain = false
 
       if (rn != 1224 && rn != 1225 && runFlags.includes("H"))
         isPrideTrain = true,
-          console.log("found pride train")
+        console.log("found pride train")
       else
         isPrideTrain = false
 
