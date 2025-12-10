@@ -107,6 +107,40 @@ fastify.get('/api/cta-arrivals', async (request, reply) => {
       lastFetchTime: now,
     };
 
+    const holidayTrainRunNumber = 1225
+    const apiUrlFollow = `https://lapi.transitchicago.com/api/1.0/ttfollow.aspx?key=${process.env.TRAIN_API_KEY}&outputType=JSON&runnumber=${holidayTrainRunNumber}`;
+    holidayTrainCheck = await (fetch(apiUrlFollow).then(res => res.json()))
+
+    if (holidayTrainCheck.ctatt.errNm == null)
+      routeNameMap = {
+        G: 'Green',
+        Brn: 'Brown',
+        Org: 'Orange',
+        P: 'Purple',
+        Y: 'Yellow',
+      };
+      firstEta = holidayTrainCheck["ctatt"]["eta"][0]
+      arrivalDate = new Date(firstEta.arrT);
+      predictionDate = new Date(firstEta.prdt);
+      diffInMinutes = Math.floor((arrivalDate - predictionDate) / (1000 * 60));
+      routeName = routeNameMap[firstEta.rt] || firstEta.rt
+      routeNameHoliday = "Holiday Train on " + routeName
+      holidayTrainItem = {
+        route: routeNameHoliday,
+        routeNameFull: routeNameHoliday,
+        stationName: firstEta.staNm,
+        stopDescription: firstEta.stpDe,
+        arrivalTime: diffInMinutes,
+        routeNumber: firstEta.rn,
+        destination: "To " + firstEta.destNm,
+        isScheduled: firstEta.isSch,
+        isArriving: firstEta.isApp,
+        isDelayed: firstEta.isDly,
+        isHoliday: true,
+        isPride: false,
+      }
+      groupedData.unshift(holidayTrainItem);
+
     return reply.send(groupedData);
 
   } catch (error) {
@@ -134,9 +168,9 @@ function groupByRouteAndDirection(eta, ignoreItems) {
       const predictionDate = new Date(prdt);
       const diffInMinutes = Math.floor((arrivalDate - predictionDate) / (1000 * 60));
       const runFlags = toString(flags)
-      if ((rn == 1224 || rn == 1225) && runFlags.includes("H"))
+      if ((rn == 1224 || rn == 1225))
         isHolidayTrain = true,
-        console.log("found holiday train")
+          console.log("found holiday train")
       else
         isHolidayTrain = false
 
@@ -148,8 +182,11 @@ function groupByRouteAndDirection(eta, ignoreItems) {
 
       if (diffInMinutes < ignoreItems) return null;
 
+      routeName = routeNameMap[rt] || rt
+      
       return {
-        route: routeNameMap[rt] || rt,
+        route: routeName,
+        routeNameFull: routeName + " Line",
         stationName: staNm,
         stopDescription: stpDe,
         arrivalTime: diffInMinutes,

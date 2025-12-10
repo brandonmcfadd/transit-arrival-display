@@ -248,7 +248,7 @@
         <div class="train-entry-number">${index + 1}</div>
         <div class="train-entry-body">
           <div class="train-entry-details">
-            <span class="train-entry-run-info">${line} Line #${arrival.routeNumber} at ${arrival.stationName} to</span>
+            <span class="train-entry-run-info">${arrival.routeNameFull} #${arrival.routeNumber} at ${arrival.stationName} to</span>
             <span class="train-entry-dest">
               ${arrival.destination}
               ${['Midway', "O'Hare"].includes(arrival.destination) ? '<img src="/images/icon_ttairport.svg" alt="Airport" style="height: 2.5rem; vertical-align: middle;" />' : ''}
