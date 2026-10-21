@@ -84,6 +84,8 @@ fastify.get('/api/cta-arrivals', async (request, reply) => {
   const arrivals = [];
   const sourceErrors = [];
   let successfulSources = 0;
+  let filteredTrainCount = 0;
+  let filteredBusCount = 0;
 
   if (trainIds.length) {
     try {
@@ -107,7 +109,9 @@ fastify.get('/api/cta-arrivals', async (request, reply) => {
         return data.ctatt?.eta || [];
       });
 
-      arrivals.push(...groupByRouteAndDirection(trainResults, ignoreMinutesTrain));
+      arrivals.push(...groupByRouteAndDirection(trainResults, ignoreMinutesTrain, (count) => {
+        filteredTrainCount += count;
+      }));
       successfulSources += 1;
 
       try {
@@ -178,7 +182,10 @@ fastify.get('/api/cta-arrivals', async (request, reply) => {
         if (!Number.isInteger(arrivalTime)) {
           throw new Error(`Invalid bus prediction countdown: ${prediction.prdctdn}`);
         }
-        if (!Number.isFinite(arrivalTime) || arrivalTime < ignoreMinutesBus) continue;
+        if (!Number.isFinite(arrivalTime) || arrivalTime < ignoreMinutesBus) {
+          filteredBusCount += 1;
+          continue;
+        }
         arrivals.push({
           route: 'Bus',
           routeNameFull: `Bus Route `,
@@ -208,13 +215,21 @@ fastify.get('/api/cta-arrivals', async (request, reply) => {
     });
   }
 
-  arrivals.sort((a, b) => a.arrivalTime - b.arrivalTime);
+  const response = {
+    arrivals: arrivals,
+    filteredCounts: {
+      trains: filteredTrainCount,
+      buses: filteredBusCount
+    }
+  };
+
+  response.arrivals.sort((a, b) => a.arrivalTime - b.arrivalTime);
   if (sourceErrors.length) {
     reply.header('X-CTA-Source-Errors', encodeURIComponent(sourceErrors.join('; ')));
   } else {
-    cache[cacheKey] = { data: arrivals, lastFetchTime: Date.now() };
+    cache[cacheKey] = { data: response, lastFetchTime: Date.now() };
   }
-  return reply.send(arrivals);
+  return reply.send(response);
 });
 
 function queryValues(value) {
@@ -226,7 +241,7 @@ function queryValues(value) {
     .filter(Boolean);
 }
 
-function groupByRouteAndDirection(eta, ignoreItems) {
+function groupByRouteAndDirection(eta, ignoreItems, onFiltered) {
   const routeNameMap = {
     G: 'Green',
     Brn: 'Brown',
@@ -257,7 +272,10 @@ function groupByRouteAndDirection(eta, ignoreItems) {
       else
         isPrideTrain = false
 
-      if (diffInMinutes < ignoreItems) return null;
+      if (diffInMinutes < ignoreItems) {
+        if (onFiltered) onFiltered(1);
+        return null;
+      }
 
       routeName = routeNameMap[rt] || rt
       

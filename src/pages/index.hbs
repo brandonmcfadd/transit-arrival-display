@@ -70,6 +70,25 @@
       gap: 1px;
     }
 
+    .filter-info {
+      display: flex;
+      width: 100%;
+      height: 2rem;
+      background-color: #333;
+      color: #ccc;
+      font-size: 0.85rem;
+      padding: 0.5rem;
+      box-sizing: border-box;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .filter-info[hidden] {
+      display: none;
+    }
+
     .train-entry {
       display: flex;
       width: 100%;
@@ -158,6 +177,7 @@
   <div class="arrivals">
     <div class="loading">Loading...</div>
     <div id="arrivalContainer" style="display: none;"></div>
+    <div id="filterInfo" class="filter-info" hidden></div>
   </div>
   <div id="sourceWarning" role="status" hidden></div>
 
@@ -210,6 +230,8 @@
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       const params = getUrlParams();
+      const trainWalkTime = Number(params.trainWalkTime || params.walkTime || 0);
+      const busWalkTime = Number(params.busWalkTime || 0);
       const url = new URL('/api/cta-arrivals', window.location.origin);
       Object.keys(params).forEach(key => {
         url.searchParams.append(key, params[key]);
@@ -224,19 +246,36 @@
           ? `Some arrival estimates are unavailable: ${decodeURIComponent(sourceErrors)}`
           : '';
         sourceWarning.hidden = !sourceErrors;
-        const data = await response.json();
+        const responseData = await response.json();
+        const { arrivals, filteredCounts } = responseData;
 
         document.querySelector('.loading').style.display = 'none';
         container.style.display = 'flex';
         container.innerHTML = '';
 
+        const filterInfo = document.getElementById('filterInfo');
+        const hasFiltered = filteredCounts.trains > 0 || filteredCounts.buses > 0;
+        if (hasFiltered) {
+          const trainMsg = filteredCounts.trains > 0
+            ? `${filteredCounts.trains} train${filteredCounts.trains > 1 ? 's' : ''} arriving in less than ${trainWalkTime} minutes`
+            : '';
+          const busMsg = filteredCounts.buses > 0
+            ? `${filteredCounts.buses} bus${filteredCounts.buses > 1 ? 'es' : ''} arriving in less than ${busWalkTime} minutes`
+            : '';
+          const parts = [trainMsg, busMsg].filter(Boolean);
+          filterInfo.textContent = `Due to required walk time, ${parts.join(' and ')} have been hidden.`;
+          filterInfo.hidden = false;
+        } else {
+          filterInfo.hidden = true;
+        }
+
         // Sort and render entries
-        data.sort((a, b) => a.arrivalTime - b.arrivalTime);
+        arrivals.sort((a, b) => a.arrivalTime - b.arrivalTime);
         const vh = window.innerHeight;
         const maxEntries = vh / 95;
         const rowHeight = `6rem`;
 
-        data.slice(0, maxEntries).forEach((arrival, index) => {
+        arrivals.slice(0, maxEntries).forEach((arrival, index) => {
           const line = arrival.route;
           const lineColor = getRouteColor(line);
           const lineKey = line.toLowerCase();
