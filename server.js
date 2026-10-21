@@ -40,6 +40,35 @@ fastify.register(require("@fastify/view"), {
 
 const fs = require('fs');
 
+async function fetchWithRetry(url, options = {}) {
+  const maxRetries = options.maxRetries || 2;
+  const timeout = options.timeout || 8000;
+  let lastError;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      lastError = error;
+      if (attempt < maxRetries) {
+        const delayMs = Math.min(1000 * Math.pow(2, attempt), 5000);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+
+  throw lastError;
+}
+
 fastify.get("/", async function (request, reply) {
   // The Handlebars code will be able to access the parameter values and build them into the page
   return reply.view("/src/pages/index.hbs");
@@ -96,7 +125,7 @@ fastify.get('/api/cta-arrivals', async (request, reply) => {
         url.searchParams.set('outputType', 'JSON');
         url.searchParams.set('max', '500');
         trainIds.slice(i, i + 4).forEach(id => url.searchParams.append(trainIdType, id));
-        batches.push(fetch(url).then(async response => {
+        batches.push(fetchWithRetry(url, { maxRetries: 2, timeout: 8000 }).then(async response => {
           if (!response.ok) throw new Error(`Train Tracker API returned HTTP ${response.status}`);
           return response.json();
         }));
@@ -120,7 +149,7 @@ fastify.get('/api/cta-arrivals', async (request, reply) => {
         holidayUrl.searchParams.set('key', process.env.TRAIN_API_KEY || '');
         holidayUrl.searchParams.set('outputType', 'JSON');
         holidayUrl.searchParams.set('runnumber', String(holidayTrainRunNumber));
-        const holidayResponse = await fetch(holidayUrl);
+        const holidayResponse = await fetchWithRetry(holidayUrl, { maxRetries: 2, timeout: 8000 });
         if (!holidayResponse.ok) {
           throw new Error(`Train Tracker API returned HTTP ${holidayResponse.status}`);
         }
@@ -166,7 +195,7 @@ fastify.get('/api/cta-arrivals', async (request, reply) => {
       url.searchParams.set('stpid', busStpids.join(','));
       if (busRoutes.length) url.searchParams.set('rt', busRoutes.join(','));
 
-      const response = await fetch(url);
+      const response = await fetchWithRetry(url, { maxRetries: 2, timeout: 8000 });
       if (!response.ok) throw new Error(`Bus Tracker API returned HTTP ${response.status}`);
       const data = await response.json();
       const busResponse = data['bustime-response'];

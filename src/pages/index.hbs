@@ -46,7 +46,7 @@
     #sourceWarning {
       position: fixed;
       z-index: 1;
-      top: 0.5rem;
+      bottom: 0.5rem;
       left: 50%;
       transform: translateX(-50%);
       max-width: 90%;
@@ -76,7 +76,7 @@
       height: 2rem;
       background-color: #333;
       color: #ccc;
-      font-size: 0.85rem;
+      font-size: 1rem;
       padding: 0.5rem;
       box-sizing: border-box;
       align-items: center;
@@ -170,14 +170,42 @@
       width: auto;
       padding: 0 1.7vw;
     }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    @keyframes fadeOut {
+      from {
+        opacity: 1;
+      }
+      to {
+        opacity: 0;
+      }
+    }
+
+    .fade-in {
+      animation: fadeIn 0.25s ease-in;
+      opacity: 1;
+    }
+
+    .fade-out {
+      animation: fadeOut 0.25s ease-out;
+      opacity: 0;
+    }
   </style>
 </head>
 
 <body>
   <div class="arrivals">
     <div class="loading">Loading...</div>
-    <div id="arrivalContainer" style="display: none;"></div>
     <div id="filterInfo" class="filter-info" hidden></div>
+    <div id="arrivalContainer" style="display: none;"></div>
   </div>
   <div id="sourceWarning" role="status" hidden></div>
 
@@ -221,13 +249,16 @@
 
     async function fetchArrivals() {
       const container = document.getElementById('arrivalContainer');
+      const filterInfo = document.getElementById('filterInfo');
 
       // Start fade out
       container.classList.remove('fade-in');
+      filterInfo.classList.remove('fade-in');
       container.classList.add('fade-out');
+      filterInfo.classList.add('fade-out');
 
-      // Wait 1 second for fade out to finish
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Wait for fade out to finish (300ms animation)
+      await new Promise(resolve => setTimeout(resolve, 300));
 
       const params = getUrlParams();
       const trainWalkTime = Number(params.trainWalkTime || params.walkTime || 0);
@@ -243,7 +274,7 @@
         const sourceErrors = response.headers.get('X-CTA-Source-Errors');
         const sourceWarning = document.getElementById('sourceWarning');
         sourceWarning.textContent = sourceErrors
-          ? `Some arrival estimates are unavailable: ${decodeURIComponent(sourceErrors)}`
+          ? `${decodeURIComponent(sourceErrors)}`
           : '';
         sourceWarning.hidden = !sourceErrors;
         const responseData = await response.json();
@@ -339,6 +370,8 @@
         // Fade back in
         container.classList.remove('fade-out');
         container.classList.add('fade-in');
+        filterInfo.classList.remove('fade-out');
+        filterInfo.classList.add('fade-in');
 
       } catch (error) {
         console.error('Error fetching data:', error);
