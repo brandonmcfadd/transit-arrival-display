@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>CTA Arrivals - Reduced Format</title>
+  <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      background-color: #000;
+      font-family: Arial, sans-serif;
+      color: white;
+    }
+
+    .arrivals {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .loading {
+      flex-grow: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 5vw;
+    }
+
+    #sourceWarning {
+      position: fixed;
+      z-index: 1;
+      bottom: 0.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      max-width: 90%;
+      padding: 0.5rem 1rem;
+      background: #7a4e00;
+      color: white;
+      font-size: 1rem;
+      text-align: center;
+    }
+
+    #sourceWarning[hidden],
+    .filter-info[hidden] {
+      display: none;
+    }
+
+    .filter-info {
+      display: flex;
+      width: 100%;
+      background-color: #333;
+      color: #ccc;
+      font-size: 1rem;
+      padding: 0.5rem;
+      box-sizing: border-box;
+      justify-content: center;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    #arrivalContainer {
+      display: flex;
+      flex-direction: column;
+      flex-grow: 1;
+      overflow: hidden;
+      gap: 1px;
+    }
+
+    .route-row {
+      display: flex;
+      align-items: center;
+      height: 6rem;
+      flex-shrink: 0;
+      padding: 0 1.5vw;
+      background-color: var(--line-color, #000);
+      color: white;
+    }
+
+    .route-row[data-line="yellow"] {
+      color: black;
+    }
+
+    .route-row.inverted {
+      background-color: white;
+      color: var(--line-color);
+    }
+
+    .route-row.holidayTrain {
+      background: linear-gradient(125deg, #C60C30 0%, #009B3A 20%, #C60C30 40%, #009B3A 60%, #C60C30 80%, #009B3A 100%);
+    }
+
+    .route-details {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .route-station {
+      font-size: 1.5rem;
+    }
+
+    .route-name {
+      font-size: 3rem;
+      font-weight: bold;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .route-etas {
+      display: flex;
+      align-items: baseline;
+      margin-left: auto;
+      padding-left: 2vw;
+      white-space: nowrap;
+    }
+
+    .eta-next {
+      font-size: 3rem;
+      font-weight: bold;
+    }
+
+    .eta-later {
+      font-size: 2rem;
+    }
+
+    .eta-later::before {
+      content: ",\00a0\00a0";
+    }
+
+    .eta-unit {
+      font-size: 1.25rem;
+      margin-left: 0.3rem;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes fadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+
+    .fade-in {
+      animation: fadeIn 0.3s ease-in;
+      opacity: 1;
+    }
+
+    .fade-out {
+      animation: fadeOut 0.3s ease-out;
+      opacity: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="arrivals">
+    <div class="loading">Loading...</div>
+    <div id="filterInfo" class="filter-info" hidden></div>
+    <div id="arrivalContainer" style="display: none;"></div>
+  </div>
+  <div id="sourceWarning" role="status" hidden></div>
+
+  <script>
+    const ETAS_PER_ROUTE = 4;
+    const routeColors = {
+      red: '#C60C30',
+      blue: '#00A1DE',
+      brown: '#62361B',
+      green: '#009B3A',
+      orange: '#F9461C',
+      pink: '#E27EA6',
+      purple: '#522398',
+      yellow: '#F9E300',
+      bus: '#0165BD',
+    };
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      })[char]);
+    }
+
+    function getRouteColor(route) {
+      return routeColors[route.toLowerCase()] || '#333333';
+    }
+
+    function formatEta(arrival) {
+      if (arrival.isDelayed === '1') return { value: 'Delayed', unit: '' };
+      if (arrival.isArriving === '1' || arrival.isArriving === true || arrival.arrivalTime <= 1) {
+        return { value: 'Due', unit: '' };
+      }
+      return { value: arrival.arrivalTime, unit: '' };
+    }
+
+    function routeLabel(arrival) {
+      const name = arrival.route === 'Bus'
+        ? `#${arrival.routeNumber}`
+        : arrival.routeNameFull;
+      const destination = arrival.destination.startsWith('To ')
+        ? arrival.destination.replace(/^To /, 'towards ')
+        : `to ${arrival.destination}`;
+      return `${name} ${destination}`;
+    }
+
+    function groupArrivals(arrivals) {
+      const groups = new Map();
+      arrivals.forEach(arrival => {
+        const routeKey = arrival.route === 'Bus' ? `Bus ${arrival.routeNumber}` : arrival.route;
+        const key = [routeKey, arrival.stationName, arrival.destination].join('|');
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(arrival);
+      });
+      return [...groups.values()]
+        .map(group => group
+          .sort((a, b) => a.arrivalTime - b.arrivalTime)
+          .slice(0, ETAS_PER_ROUTE))
+        .sort((a, b) => {
+          const first = a[0];
+          const second = b[0];
+          const firstIsBus = first.route === 'Bus';
+          const secondIsBus = second.route === 'Bus';
+          if (firstIsBus !== secondIsBus) return firstIsBus ? 1 : -1;
+          const routeOrder = firstIsBus
+            ? String(first.routeNumber).localeCompare(String(second.routeNumber), 'en', { numeric: true })
+            : first.route.localeCompare(second.route, 'en');
+          return routeOrder
+            || first.destination.localeCompare(second.destination, 'en')
+            || first.stationName.localeCompare(second.stationName, 'en');
+        });
+    }
+
+    function renderEtas(group) {
+      return group.map((arrival, index) => {
+        const { value, unit } = formatEta(arrival);
+        const cls = index === 0 ? 'eta-next' : 'eta-later';
+        const unitHtml = index === 0 && unit ? `<span class="eta-unit">${unit}</span>` : '';
+        return `<span class="${cls}">${escapeHtml(value)}${unitHtml}</span>`;
+      }).join('');
+    }
+
+    async function fetchArrivals() {
+      const container = document.getElementById('arrivalContainer');
+      const filterInfo = document.getElementById('filterInfo');
+
+      container.classList.remove('fade-in');
+      filterInfo.classList.remove('fade-in');
+      container.classList.add('fade-out');
+      filterInfo.classList.add('fade-out');
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      const params = new URLSearchParams(window.location.search);
+      const trainWalkTime = Number(params.get('trainWalkTime') || params.get('walkTime') || 0);
+      const busWalkTime = Number(params.get('busWalkTime') || 0);
+      const url = new URL('/api/cta-arrivals', window.location.origin);
+      url.search = params.toString();
+
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Failed to fetch data');
+        const sourceErrors = response.headers.get('X-CTA-Source-Errors');
+        const sourceWarning = document.getElementById('sourceWarning');
+        sourceWarning.textContent = sourceErrors ? decodeURIComponent(sourceErrors) : '';
+        sourceWarning.hidden = !sourceErrors;
+        const { arrivals, filteredCounts } = await response.json();
+
+        document.querySelector('.loading').style.display = 'none';
+        container.style.display = 'flex';
+        container.innerHTML = '';
+
+        if (filteredCounts.trains > 0 || filteredCounts.buses > 0) {
+          const trainMsg = filteredCounts.trains > 0
+            ? `${filteredCounts.trains} train${filteredCounts.trains > 1 ? 's' : ''} arriving in less than ${trainWalkTime} minutes`
+            : '';
+          const busMsg = filteredCounts.buses > 0
+            ? `${filteredCounts.buses} bus${filteredCounts.buses > 1 ? 'es' : ''} arriving in less than ${busWalkTime} minutes`
+            : '';
+          filterInfo.textContent = `Due to required walk time, ${[trainMsg, busMsg].filter(Boolean).join(' and ')} have been hidden.`;
+          filterInfo.hidden = false;
+        } else {
+          filterInfo.hidden = true;
+        }
+
+        const maxRows = Math.max(1, Math.floor(window.innerHeight / 97));
+        groupArrivals(arrivals).slice(0, maxRows).forEach(group => {
+          const first = group[0];
+          const lineKey = first.route.toLowerCase();
+          const row = document.createElement('div');
+          row.classList.add('route-row');
+          row.setAttribute('data-line', lineKey);
+          row.style.setProperty('--line-color', getRouteColor(first.route));
+          if (first.destination === 'Cottage Grove' || first.destination === 'UIC-Halsted') {
+            row.classList.add('inverted');
+          }
+          if (first.isHoliday === true) row.classList.add('holidayTrain');
+
+          row.innerHTML = `
+            <div class="route-details">
+              <span class="route-station">${escapeHtml(first.stationName)}</span>
+              <span class="route-name">${escapeHtml(routeLabel(first))}</span>
+            </div>
+            <div class="route-etas">${renderEtas(group)}</div>
+          `;
+          container.appendChild(row);
+        });
+
+        container.classList.remove('fade-out');
+        container.classList.add('fade-in');
+        filterInfo.classList.remove('fade-out');
+        filterInfo.classList.add('fade-in');
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        document.querySelector('.loading').textContent = 'Failed to load data.';
+      }
+    }
+
+    window.onload = () => {
+      fetchArrivals();
+      setInterval(fetchArrivals, 60000);
+    };
+  </script>
+</body>
+
+</html>

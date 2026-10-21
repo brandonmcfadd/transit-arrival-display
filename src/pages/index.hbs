@@ -324,12 +324,12 @@
           if (isPrideTrain === true) trainEntry.classList.add('prideTrain')
 
           let timingDisplay;
-          if (arrival.route === 'Bus') {
-            timingDisplay = `<span class="bold">${arrival.arrivalTime}</span> min`;
+          if (arrival.isDelayed === "1") {
+            timingDisplay = '<span class="bold">Delayed</span>';
           } else if (arrival.isArriving === "1" || arrival.arrivalTime === 0 || arrival.arrivalTime === 1) {
             timingDisplay = '<span class="bold">Due</span>';
-          } else if (arrival.isDelayed === "1" && arrival.isScheduled === "0") {
-            timingDisplay = '<span class="bold">Delayed</span>';
+          } else if (arrival.route === 'Bus') {
+            timingDisplay = `<span class="bold">${arrival.arrivalTime}</span> min`;
           } else {
             timingDisplay = `<span class="bold">${arrival.arrivalTime}</span> min`;
           }

@@ -74,6 +74,10 @@ fastify.get("/", async function (request, reply) {
   return reply.view("/src/pages/index.hbs");
 });
 
+fastify.get("/reduced-format", async function (request, reply) {
+  return reply.view("/src/pages/reduced-format.hbs");
+});
+
 const CACHE_DURATION = 59 * 1000; // Cache for 60 seconds
 
 fastify.get('/api/cta-arrivals', async (request, reply) => {
@@ -207,11 +211,13 @@ fastify.get('/api/cta-arrivals', async (request, reply) => {
       const predictions = busResponse?.prd || [];
       for (const prediction of Array.isArray(predictions) ? predictions : [predictions]) {
         const isDue = prediction.prdctdn === 'DUE';
-        const arrivalTime = isDue ? 0 : Number(prediction.prdctdn);
-        if (!Number.isInteger(arrivalTime)) {
+        const isDelayed = prediction.prdctdn === 'DLY' || prediction.dly;
+        const arrivalTime = isDue ? 0 : (isDelayed ? -1 : Number(prediction.prdctdn));
+        
+        if (!isDelayed && !Number.isInteger(arrivalTime)) {
           throw new Error(`Invalid bus prediction countdown: ${prediction.prdctdn}`);
         }
-        if (!Number.isFinite(arrivalTime) || arrivalTime < ignoreMinutesBus) {
+        if (!Number.isFinite(arrivalTime) || (arrivalTime >= 0 && arrivalTime < ignoreMinutesBus)) {
           filteredBusCount += 1;
           continue;
         }
@@ -220,12 +226,12 @@ fastify.get('/api/cta-arrivals', async (request, reply) => {
           routeNameFull: `Bus Route `,
           stationName: prediction.stpnm,
           stopDescription: prediction.rtdir,
-          arrivalTime,
+          arrivalTime: arrivalTime < 0 ? 0 : arrivalTime,
           routeNumber: `${prediction.rt}`,
           destination: prediction.des,
           isScheduled: '0',
           isArriving: isDue || arrivalTime <= 1,
-          isDelayed: prediction.dly ? '1' : '0',
+          isDelayed: isDelayed ? '1' : '0',
           isHoliday: false,
           isPride: false,
         });
