@@ -9,7 +9,7 @@
   "dependencies": {
     "@fastify/formbody": "^7.2.0",
     "@fastify/static": "^6.5.0",
-    "@fastify/view": "^7.1.0",
+    "@fastify/view": "^8.2.0",
     "dotenv": "^8.6.0",
     "fastify": "^4.6.0",
     "fetch": "^1.1.0",
