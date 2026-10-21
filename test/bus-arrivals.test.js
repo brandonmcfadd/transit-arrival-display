@@ -88,6 +88,18 @@ test('delays preserve calculated minutes and obey walk-time filtering', async ()
   assert.equal(body.filteredCounts.buses, 1);
 });
 
+test('holiday bus 4374 receives the holiday flag without changing its route or timing', async () => {
+  const { body } = await fetchBusArrivals([
+    prediction('20261021 14:44', { vid: '4374' }),
+    prediction('20261021 14:45', { vid: 4374 }),
+    prediction('20261021 14:46', { vid: '4375' }),
+    prediction('20261021 14:47'),
+  ]);
+  assert.deepEqual(body.arrivals.map(item => item.isHoliday), [true, true, false, false]);
+  assert.deepEqual(body.arrivals.map(item => item.arrivalTime), [5, 6, 7, 8]);
+  assert.ok(body.arrivals.every(item => item.route === 'Bus' && item.routeNumber === '22'));
+});
+
 test('invalid or missing timestamps produce explicit source errors', async () => {
   for (const value of [undefined, 'invalid', '20260230 15:00', '20261021 24:00']) {
     const { body, status, errors } = await fetchBusArrivals([prediction(value)]);

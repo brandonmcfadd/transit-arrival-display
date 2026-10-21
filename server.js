@@ -231,7 +231,7 @@ fastify.get('/api/cta-arrivals', async (request, reply) => {
           isScheduled: '0',
           isArriving: arrivalTime <= 2,
           isDelayed: isDelayed ? '1' : '0',
-          isHoliday: false,
+          isHoliday: String(prediction.vid) === '4374',
           isPride: false,
         });
       }

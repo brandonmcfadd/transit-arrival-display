@@ -127,7 +127,7 @@ Each arrival item returned by the `/api/cta-arrivals` endpoint includes the foll
 - **isScheduled**: Whether the train is scheduled; bus predictions are live.
 - **isArriving**: Whether the vehicle is actively arriving.
 - **isDelayed**: Whether the vehicle is delayed.
-- **isHoliday**: Whether this is a holiday-specific train (routes 1224 and 1225).
+- **isHoliday**: Whether this is a holiday train (runs 1224 and 1225) or holiday bus (vehicle ID 4374). Both display pages use the existing holiday styling for flagged arrivals.
 - **isPride**: Whether this is a pride train service.
 
 
