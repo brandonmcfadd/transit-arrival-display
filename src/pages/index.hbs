@@ -43,6 +43,24 @@
       font-size: 5vw;
     }
 
+    #sourceWarning {
+      position: fixed;
+      z-index: 1;
+      top: 0.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      max-width: 90%;
+      padding: 0.5rem 1rem;
+      background: #7a4e00;
+      color: white;
+      font-size: 1rem;
+      text-align: center;
+    }
+
+    #sourceWarning[hidden] {
+      display: none;
+    }
+
     #arrivalContainer {
       display: flex;
       flex-direction: column;
@@ -141,6 +159,7 @@
     <div class="loading">Loading...</div>
     <div id="arrivalContainer" style="display: none;"></div>
   </div>
+  <div id="sourceWarning" role="status" hidden></div>
 
   <script>
     const routeColors = {
@@ -152,6 +171,7 @@
       pink: '#E27EA6',
       purple: '#522398',
       yellow: '#F9E300',
+      bus: '#0165BD',
     };
     const imageCache = new Map();
 
@@ -198,6 +218,12 @@
       try {
         const response = await fetch(url);
         if (!response.ok) throw new Error('Failed to fetch data');
+        const sourceErrors = response.headers.get('X-CTA-Source-Errors');
+        const sourceWarning = document.getElementById('sourceWarning');
+        sourceWarning.textContent = sourceErrors
+          ? `Some arrival estimates are unavailable: ${decodeURIComponent(sourceErrors)}`
+          : '';
+        sourceWarning.hidden = !sourceErrors;
         const data = await response.json();
 
         document.querySelector('.loading').style.display = 'none';
@@ -228,7 +254,9 @@
           if (isPrideTrain === true) trainEntry.classList.add('prideTrain')
 
           let timingDisplay;
-          if (arrival.isArriving === "1" || arrival.arrivalTime === 0 || arrival.arrivalTime === 1) {
+          if (arrival.route === 'Bus') {
+            timingDisplay = `<span class="bold">${arrival.arrivalTime}</span> min`;
+          } else if (arrival.isArriving === "1" || arrival.arrivalTime === 0 || arrival.arrivalTime === 1) {
             timingDisplay = '<span class="bold">Due</span>';
           } else if (arrival.isDelayed === "1" && arrival.isScheduled === "0") {
             timingDisplay = '<span class="bold">Delayed</span>';
