@@ -132,16 +132,16 @@
     }
 
     .eta-later {
-      font-size: 2rem;
+      font-size: 2.25rem;
     }
 
     .eta-later::before {
-      content: ",\00a0\00a0";
+      content: ", ";
     }
 
     .eta-unit {
       font-size: 1.25rem;
-      margin-left: 0.3rem;
+      margin-left: 0.2rem;
     }
 
     @keyframes fadeIn {
@@ -246,11 +246,10 @@
 
     function renderEtas(group) {
       return group.map((arrival, index) => {
-        const { value, unit } = formatEta(arrival);
+        const { value } = formatEta(arrival);
         const cls = index === 0 ? 'eta-next' : 'eta-later';
-        const unitHtml = index === 0 && unit ? `<span class="eta-unit">${unit}</span>` : '';
-        return `<span class="${cls}">${escapeHtml(value)}${unitHtml}</span>`;
-      }).join('');
+        return `<span class="${cls}">${escapeHtml(value)}</span>`;
+      }).join('') + '<span class="eta-unit">min</span>';
     }
 
     async function fetchArrivals() {
@@ -310,7 +309,9 @@
 
           row.innerHTML = `
             <div class="route-details">
-              <span class="route-station">${escapeHtml(first.stationName)}</span>
+              <span class="route-station">${escapeHtml(first.route === 'Bus'
+                ? `${first.stopDescription} at ${first.stationName}`
+                : first.stationName)}</span>
               <span class="route-name">${escapeHtml(routeLabel(first))}</span>
             </div>
             <div class="route-etas">${renderEtas(group)}</div>

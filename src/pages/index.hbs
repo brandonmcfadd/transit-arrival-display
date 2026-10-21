@@ -190,12 +190,12 @@
     }
 
     .fade-in {
-      animation: fadeIn 0.15s ease-in;
+      animation: fadeIn 0.1s ease-in;
       opacity: 1;
     }
 
     .fade-out {
-      animation: fadeOut 0.15s ease-out;
+      animation: fadeOut 0.1s ease-out;
       opacity: 0;
     }
   </style>
@@ -349,7 +349,7 @@
         <div class="train-entry-body">
           <div class="train-entry-details">
             <span class="train-entry-run-info">${arrival.route === 'Bus'
-              ? `Bus ${arrival.direction} at ${arrival.stationName}`
+              ? `Bus #${arrival.vehicleId} ${arrival.direction} at ${arrival.stationName}`
               : `${arrival.routeNameFull} #${arrival.routeNumber} at ${arrival.stationName} to`}</span>
             <span class="train-entry-dest">
               ${arrival.route === 'Bus' ? `Route #${arrival.routeNumber} to ${arrival.destination}` : arrival.destination}
