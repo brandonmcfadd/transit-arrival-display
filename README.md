@@ -98,7 +98,7 @@ Notes
 
 ## Response Format
 
-Each arrival item returned by the `/api/cta-arrivals` endpoint includes the following fields. Bus items use `route: "Bus"`, display the bus route in `routeNameFull`, use the vehicle ID for `routeNumber`, and include the stop direction in `stopDescription`. Bus countdowns come directly from `prdctdn`; `DUE` is converted to `0`, and numeric values are displayed as minutes.
+Each arrival item returned by the `/api/cta-arrivals` endpoint includes the following fields. Bus items use `route: "Bus"`, use the bus route number for `routeNumber`, and include the stop direction in `stopDescription`. Bus minutes are calculated as `prdtm - tmstmp`, rounded down to whole minutes, using CTA timestamps in `YYYYMMDD HH:mm` (or `YYYYMMDD HH:mm:ss`) format. These minutes drive sorting and walk-time filtering; past predictions are excluded. Both display pages show `Due` for buses 0-2 minutes away and minutes for later buses. `prdctdn: "DLY"` or `dly: true` takes display priority as `Delayed`, without replacing the calculated minutes. Invalid timestamps are reported as bus-source errors.
 
 ```json
 {

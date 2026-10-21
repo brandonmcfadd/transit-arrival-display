@@ -200,7 +200,8 @@
 
     function formatEta(arrival) {
       if (arrival.isDelayed === '1') return { value: 'Delayed', unit: '' };
-      if (arrival.isArriving === '1' || arrival.isArriving === true || arrival.arrivalTime <= 1) {
+      if (arrival.isArriving === '1' || arrival.isArriving === true ||
+        (arrival.arrivalTime >= 0 && arrival.arrivalTime <= (arrival.route === 'Bus' ? 2 : 1))) {
         return { value: 'Due', unit: '' };
       }
       return { value: arrival.arrivalTime, unit: '' };

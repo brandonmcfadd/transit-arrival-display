@@ -190,12 +190,12 @@
     }
 
     .fade-in {
-      animation: fadeIn 0.25s ease-in;
+      animation: fadeIn 0.15s ease-in;
       opacity: 1;
     }
 
     .fade-out {
-      animation: fadeOut 0.25s ease-out;
+      animation: fadeOut 0.15s ease-out;
       opacity: 0;
     }
   </style>
@@ -326,7 +326,9 @@
           let timingDisplay;
           if (arrival.isDelayed === "1") {
             timingDisplay = '<span class="bold">Delayed</span>';
-          } else if (arrival.isArriving === "1" || arrival.arrivalTime === 0 || arrival.arrivalTime === 1) {
+          } else if (arrival.isArriving === "1" ||
+            (arrival.route === 'Bus' && arrival.isArriving === true) ||
+            (arrival.arrivalTime >= 0 && arrival.arrivalTime <= (arrival.route === 'Bus' ? 2 : 1))) {
             timingDisplay = '<span class="bold">Due</span>';
           } else if (arrival.route === 'Bus') {
             timingDisplay = `<span class="bold">${arrival.arrivalTime}</span> min`;
@@ -346,9 +348,11 @@
         <div class="train-entry-number">${index + 1}</div>
         <div class="train-entry-body">
           <div class="train-entry-details">
-            <span class="train-entry-run-info">${arrival.routeNameFull} #${arrival.routeNumber} at ${arrival.stationName} to</span>
+            <span class="train-entry-run-info">${arrival.route === 'Bus'
+              ? `Bus ${arrival.direction} at ${arrival.stationName}`
+              : `${arrival.routeNameFull} #${arrival.routeNumber} at ${arrival.stationName} to`}</span>
             <span class="train-entry-dest">
-              ${arrival.destination}
+              ${arrival.route === 'Bus' ? `Route #${arrival.routeNumber} to ${arrival.destination}` : arrival.destination}
               ${['Midway', "O'Hare"].includes(arrival.destination) ? '<img src="/images/icon_ttairport.svg" alt="Airport" style="height: 2.5rem; vertical-align: middle;" />' : ''}
               ${[true].includes(isHolidayTrain) ? '<img src="/images/candycane.svg" alt="Airport" style="height: 2.5rem; vertical-align: middle;" />' : ''}
               ${[true].includes(isHolidayTrain) ? '<img src="images/santa-sleigh.svg" alt="Santas Sleigh" style="height: 2.5rem; vertical-align: middle;" />' : ''}

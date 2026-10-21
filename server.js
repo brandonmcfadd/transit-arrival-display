@@ -210,27 +210,25 @@ fastify.get('/api/cta-arrivals', async (request, reply) => {
 
       const predictions = busResponse?.prd || [];
       for (const prediction of Array.isArray(predictions) ? predictions : [predictions]) {
-        const isDue = prediction.prdctdn === 'DUE';
-        const isDelayed = prediction.prdctdn === 'DLY' || prediction.dly;
-        const arrivalTime = isDue ? 0 : (isDelayed ? -1 : Number(prediction.prdctdn));
-        
-        if (!isDelayed && !Number.isInteger(arrivalTime)) {
-          throw new Error(`Invalid bus prediction countdown: ${prediction.prdctdn}`);
-        }
-        if (!Number.isFinite(arrivalTime) || (arrivalTime >= 0 && arrivalTime < ignoreMinutesBus)) {
+        const isDelayed = prediction.prdctdn === 'DLY' || prediction.dly === true;
+        const arrivalTime = Math.floor(
+          (parseBusTimestamp(prediction.prdtm) - parseBusTimestamp(prediction.tmstmp)) / 60000
+        );
+        if (arrivalTime < 0 || arrivalTime < ignoreMinutesBus) {
           filteredBusCount += 1;
           continue;
         }
         arrivals.push({
           route: 'Bus',
-          routeNameFull: `Bus Route `,
+          routeNameFull: `Bus `,
           stationName: prediction.stpnm,
           stopDescription: prediction.rtdir,
-          arrivalTime: arrivalTime < 0 ? 0 : arrivalTime,
+          arrivalTime,
           routeNumber: `${prediction.rt}`,
           destination: prediction.des,
+          direction: prediction.rtdir,
           isScheduled: '0',
-          isArriving: isDue || arrivalTime <= 1,
+          isArriving: arrivalTime <= 2,
           isDelayed: isDelayed ? '1' : '0',
           isHoliday: false,
           isPride: false,
@@ -266,6 +264,23 @@ fastify.get('/api/cta-arrivals', async (request, reply) => {
   }
   return reply.send(response);
 });
+
+function parseBusTimestamp(value) {
+  const match = typeof value === 'string'
+    ? /^(\d{4})(\d{2})(\d{2}) (\d{2}):(\d{2})(?::(\d{2}))?$/.exec(value)
+    : null;
+  if (!match) throw new Error(`Invalid bus prediction timestamp: ${value}`);
+
+  const [, year, month, day, hour, minute, second = '00'] = match;
+  // Both fields are CTA local wall times; UTC arithmetic avoids the server's timezone.
+  const date = new Date(Date.UTC(+year, +month - 1, +day, +hour, +minute, +second));
+  if (date.getUTCFullYear() !== +year || date.getUTCMonth() !== +month - 1 ||
+      date.getUTCDate() !== +day || date.getUTCHours() !== +hour ||
+      date.getUTCMinutes() !== +minute || date.getUTCSeconds() !== +second) {
+    throw new Error(`Invalid bus prediction timestamp: ${value}`);
+  }
+  return date.getTime();
+}
 
 function queryValues(value) {
   const values = Array.isArray(value) ? value : [value];
