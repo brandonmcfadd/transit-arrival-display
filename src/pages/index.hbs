@@ -276,7 +276,7 @@
             ? `${filteredCounts.buses} bus${filteredCounts.buses > 1 ? 'es' : ''} arriving in <${busWalkTime} minutes`
             : '';
           const parts = [trainMsg, busMsg].filter(Boolean);
-          filterMessage.textContent = `Due to walk time, ${parts.join(' and ')} have been hidden.`;
+          filterMessage.textContent = `Due to walking time, ${parts.join(' and ')} have been hidden.`;
         } else {
           filterMessage.textContent = '';
         }
