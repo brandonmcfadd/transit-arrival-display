@@ -171,32 +171,14 @@
       padding: 0 1.7vw;
     }
 
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-      }
-      to {
-        opacity: 1;
-      }
+    .arrival-viewport {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
     }
 
-    @keyframes fadeOut {
-      from {
-        opacity: 1;
-      }
-      to {
-        opacity: 0;
-      }
-    }
-
-    .fade-in {
-      animation: fadeIn 0.1s ease-in;
-      opacity: 1;
-    }
-
-    .fade-out {
-      animation: fadeOut 0.1s ease-out;
-      opacity: 0;
+    .arrival-viewport #arrivalContainer {
+      height: 100%;
     }
   </style>
 </head>
@@ -204,11 +186,16 @@
 <body>
   <div class="arrivals">
     <div class="loading">Loading...</div>
-    <div id="filterInfo" class="filter-info" hidden></div>
-    <div id="arrivalContainer" style="display: none;"></div>
+    <div id="filterInfo" class="filter-info" hidden>
+      <span id="filterMessage"></span><span id="refreshSeparator" hidden>&nbsp;|&nbsp;</span><span id="refreshAge"></span>
+    </div>
+    <div class="arrival-viewport">
+      <div id="arrivalContainer" style="display: none;"></div>
+    </div>
   </div>
   <div id="sourceWarning" role="status" hidden></div>
 
+  <script src="/arrival-transitions.js"></script>
   <script>
     const routeColors = {
       red: '#C60C30',
@@ -247,18 +234,14 @@
       return routeColors[route.toLowerCase()] || '#ffffff';
     }
 
+    let refreshInProgress = false;
+
     async function fetchArrivals() {
+      if (refreshInProgress) return;
+      refreshInProgress = true;
       const container = document.getElementById('arrivalContainer');
-      const filterInfo = document.getElementById('filterInfo');
-
-      // Start fade out
-      container.classList.remove('fade-in');
-      filterInfo.classList.remove('fade-in');
-      container.classList.add('fade-out');
-      filterInfo.classList.add('fade-out');
-
-      // Wait for fade out to finish (300ms animation)
-      await new Promise(resolve => setTimeout(resolve, 300));
+      const filterMessage = document.getElementById('filterMessage');
+      const slideDuration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 200;
 
       const params = getUrlParams();
       const trainWalkTime = Number(params.trainWalkTime || params.walkTime || 0);
@@ -282,7 +265,6 @@
 
         document.querySelector('.loading').style.display = 'none';
         container.style.display = 'flex';
-        container.innerHTML = '';
 
         const filterInfo = document.getElementById('filterInfo');
         const hasFiltered = filteredCounts.trains > 0 || filteredCounts.buses > 0;
@@ -294,10 +276,9 @@
             ? `${filteredCounts.buses} bus${filteredCounts.buses > 1 ? 'es' : ''} arriving in less than ${busWalkTime} minutes`
             : '';
           const parts = [trainMsg, busMsg].filter(Boolean);
-          filterInfo.textContent = `Due to required walk time, ${parts.join(' and ')} have been hidden.`;
-          filterInfo.hidden = false;
+          filterMessage.textContent = `Due to required walk time, ${parts.join(' and ')} have been hidden.`;
         } else {
-          filterInfo.hidden = true;
+          filterMessage.textContent = '';
         }
 
         // Sort and render entries
@@ -306,7 +287,8 @@
         const maxEntries = vh / 95;
         const rowHeight = `6rem`;
 
-        arrivals.slice(0, maxEntries).forEach((arrival, index) => {
+        const keyCounts = new Map();
+        const nextRows = arrivals.slice(0, maxEntries).map((arrival, index) => {
           const line = arrival.route;
           const lineColor = getRouteColor(line);
           const lineKey = line.toLowerCase();
@@ -315,6 +297,10 @@
           const isPrideTrain = arrival.isPride
 
           const trainEntry = document.createElement('div');
+          const key = arrivalRowKey(arrival);
+          const occurrence = keyCounts.get(key) || 0;
+          keyCounts.set(key, occurrence + 1);
+          trainEntry.dataset.key = JSON.stringify([key, occurrence]);
           trainEntry.classList.add('train-entry');
           trainEntry.setAttribute('data-line', lineKey);
           trainEntry.style.setProperty('--line-color', lineColor);
@@ -368,18 +354,20 @@
           trackingDiv.appendChild(trackingImg);
           trainEntry.querySelector('.train-entry-body').appendChild(trackingDiv);
 
-          container.appendChild(trainEntry);
+          return trainEntry;
         });
 
-        // Fade back in
-        container.classList.remove('fade-out');
-        container.classList.add('fade-in');
-        filterInfo.classList.remove('fade-out');
-        filterInfo.classList.add('fade-in');
+        await updateArrivalRows(container, nextRows, slideDuration);
+        markArrivalsRefreshed();
 
       } catch (error) {
         console.error('Error fetching data:', error);
         document.querySelector('.loading').textContent = 'Failed to load data.';
+        const warning = document.getElementById('sourceWarning');
+        warning.textContent = 'Failed to refresh arrivals. Previously loaded estimates may be out of date.';
+        warning.hidden = false;
+      } finally {
+        refreshInProgress = false;
       }
     }
 

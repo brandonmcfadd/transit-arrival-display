@@ -22,6 +22,8 @@ A Node.js backend that retrieves Chicago Transit Authority train and bus arrival
 - Sixty second in memory cache  
 - Separate train and bus walk time filtering
 - Sorted and cleaned arrival results
+- Per-row refresh transitions on both display pages: retained arrivals update in place, removed rows slide upward, and new rows slide in. Reordered rows move to their new positions; reduced-motion preferences disable the animation.
+- Retained rows preserve existing DOM nodes to minimize refresh flicker. The top info bar shows seconds since the last successful display refresh, following any walk-time notice with a pipe separator.
 
 ## Requirements
 

@@ -144,24 +144,14 @@
       margin-left: 0.2rem;
     }
 
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
+    .arrival-viewport {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
     }
 
-    @keyframes fadeOut {
-      from { opacity: 1; }
-      to { opacity: 0; }
-    }
-
-    .fade-in {
-      animation: fadeIn 0.3s ease-in;
-      opacity: 1;
-    }
-
-    .fade-out {
-      animation: fadeOut 0.3s ease-out;
-      opacity: 0;
+    .arrival-viewport #arrivalContainer {
+      height: 100%;
     }
   </style>
 </head>
@@ -169,11 +159,16 @@
 <body>
   <div class="arrivals">
     <div class="loading">Loading...</div>
-    <div id="filterInfo" class="filter-info" hidden></div>
-    <div id="arrivalContainer" style="display: none;"></div>
+    <div id="filterInfo" class="filter-info" hidden>
+      <span id="filterMessage"></span><span id="refreshSeparator" hidden>&nbsp;|&nbsp;</span><span id="refreshAge"></span>
+    </div>
+    <div class="arrival-viewport">
+      <div id="arrivalContainer" style="display: none;"></div>
+    </div>
   </div>
   <div id="sourceWarning" role="status" hidden></div>
 
+  <script src="/arrival-transitions.js"></script>
   <script>
     const ETAS_PER_ROUTE = 4;
     const routeColors = {
@@ -252,15 +247,15 @@
       }).join('') + '<span class="eta-unit">min</span>';
     }
 
+    let refreshInProgress = false;
+
     async function fetchArrivals() {
+      if (refreshInProgress) return;
+      refreshInProgress = true;
       const container = document.getElementById('arrivalContainer');
       const filterInfo = document.getElementById('filterInfo');
-
-      container.classList.remove('fade-in');
-      filterInfo.classList.remove('fade-in');
-      container.classList.add('fade-out');
-      filterInfo.classList.add('fade-out');
-      await new Promise(resolve => setTimeout(resolve, 300));
+      const filterMessage = document.getElementById('filterMessage');
+      const slideDuration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 200;
 
       const params = new URLSearchParams(window.location.search);
       const trainWalkTime = Number(params.get('trainWalkTime') || params.get('walkTime') || 0);
@@ -279,7 +274,6 @@
 
         document.querySelector('.loading').style.display = 'none';
         container.style.display = 'flex';
-        container.innerHTML = '';
 
         if (filteredCounts.trains > 0 || filteredCounts.buses > 0) {
           const trainMsg = filteredCounts.trains > 0
@@ -288,17 +282,20 @@
           const busMsg = filteredCounts.buses > 0
             ? `${filteredCounts.buses} bus${filteredCounts.buses > 1 ? 'es' : ''} arriving in less than ${busWalkTime} minutes`
             : '';
-          filterInfo.textContent = `Due to required walk time, ${[trainMsg, busMsg].filter(Boolean).join(' and ')} have been hidden.`;
-          filterInfo.hidden = false;
+          filterMessage.textContent = `Due to required walk time, ${[trainMsg, busMsg].filter(Boolean).join(' and ')} have been hidden.`;
         } else {
-          filterInfo.hidden = true;
+          filterMessage.textContent = '';
         }
 
         const maxRows = Math.max(1, Math.floor(window.innerHeight / 97));
-        groupArrivals(arrivals).slice(0, maxRows).forEach(group => {
+        const nextRows = groupArrivals(arrivals).slice(0, maxRows).map(group => {
           const first = group[0];
           const lineKey = first.route.toLowerCase();
           const row = document.createElement('div');
+          row.dataset.key = JSON.stringify([
+            first.route, first.route === 'Bus' ? first.routeNumber : null,
+            first.stationName, first.destination,
+          ]);
           row.classList.add('route-row');
           row.setAttribute('data-line', lineKey);
           row.style.setProperty('--line-color', getRouteColor(first.route));
@@ -316,16 +313,19 @@
             </div>
             <div class="route-etas">${renderEtas(group)}</div>
           `;
-          container.appendChild(row);
+          return row;
         });
 
-        container.classList.remove('fade-out');
-        container.classList.add('fade-in');
-        filterInfo.classList.remove('fade-out');
-        filterInfo.classList.add('fade-in');
+        await updateArrivalRows(container, nextRows, slideDuration);
+        markArrivalsRefreshed();
       } catch (error) {
         console.error('Error fetching data:', error);
         document.querySelector('.loading').textContent = 'Failed to load data.';
+        const warning = document.getElementById('sourceWarning');
+        warning.textContent = 'Failed to refresh arrivals. Previously loaded estimates may be out of date.';
+        warning.hidden = false;
+      } finally {
+        refreshInProgress = false;
       }
     }
 
