@@ -270,13 +270,13 @@
         const hasFiltered = filteredCounts.trains > 0 || filteredCounts.buses > 0;
         if (hasFiltered) {
           const trainMsg = filteredCounts.trains > 0
-            ? `${filteredCounts.trains} train${filteredCounts.trains > 1 ? 's' : ''} arriving in less than ${trainWalkTime} minutes`
+            ? `${filteredCounts.trains} train${filteredCounts.trains > 1 ? 's' : ''} arriving in <${trainWalkTime} minutes`
             : '';
           const busMsg = filteredCounts.buses > 0
-            ? `${filteredCounts.buses} bus${filteredCounts.buses > 1 ? 'es' : ''} arriving in less than ${busWalkTime} minutes`
+            ? `${filteredCounts.buses} bus${filteredCounts.buses > 1 ? 'es' : ''} arriving in <${busWalkTime} minutes`
             : '';
           const parts = [trainMsg, busMsg].filter(Boolean);
-          filterMessage.textContent = `Due to required walk time, ${parts.join(' and ')} have been hidden.`;
+          filterMessage.textContent = `Due to walk time, ${parts.join(' and ')} have been hidden.`;
         } else {
           filterMessage.textContent = '';
         }
