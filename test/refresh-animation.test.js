@@ -132,6 +132,107 @@ test('keyed rows retain identity, update text, animate only structural changes',
   assert.equal(animations.length, 0);
 });
 
+for (const duration of [200, 0]) {
+  test(`removals, sorting, and additions run in sequence (duration ${duration})`, async () => {
+    const context = vm.createContext({ duration });
+    vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/arrival-transitions.js'), 'utf8'), context);
+    const animations = [];
+    const container = {
+      children: [],
+      insertBefore(row, reference) {
+        this.children = this.children.filter(child => child !== row);
+        const index = reference ? this.children.indexOf(reference) : this.children.length;
+        this.children.splice(index, 0, row);
+      },
+    };
+    function row(key) {
+      return {
+        dataset: { key },
+        isEqualNode: () => true,
+        getBoundingClientRect() {
+          return { top: container.children.indexOf(this) * 96, height: 96 };
+        },
+        remove() { container.children = container.children.filter(child => child !== this); },
+        animate(frames, options) {
+          assert.equal(options.duration, duration);
+          let finish;
+          const finished = new Promise(resolve => { finish = resolve; });
+          animations.push({ row: this, frames, finish });
+          return { finished };
+        },
+      };
+    }
+    const expired = row('expired');
+    const alsoExpired = row('also-expired');
+    const a = row('a');
+    const b = row('b');
+    const first = row('first');
+    const middle = row('middle');
+    const last = row('last');
+    container.children = [expired, a, alsoExpired, b];
+    context.container = container;
+    context.nextRows = [first, row('b'), middle, row('a'), last];
+    let completed = false;
+    const refresh = vm.runInContext('updateArrivalRows(container, nextRows, duration)', context)
+      .then(() => { completed = true; });
+
+    if (duration) {
+      assert.deepEqual(animations.map(animation => animation.row), [expired, alsoExpired]);
+      assert.deepEqual(container.children, [expired, a, alsoExpired, b]);
+      animations[0].finish();
+      await new Promise(setImmediate);
+      assert.deepEqual(container.children, [a, alsoExpired, b]);
+      assert.equal(animations.length, 2);
+      animations[1].finish();
+      await new Promise(setImmediate);
+
+      assert.deepEqual(container.children, [b, a]);
+      assert.deepEqual(animations.slice(2).map(animation => animation.row), [b, a]);
+      assert.equal(animations[2].frames[0].transform, 'translateY(96px)');
+      assert.equal(animations[3].frames[0].transform, 'translateY(-96px)');
+      animations[2].finish();
+      await new Promise(setImmediate);
+      assert.deepEqual(container.children, [b, a]);
+      assert.equal(animations.length, 4);
+      animations[3].finish();
+      await new Promise(setImmediate);
+
+      assert.deepEqual(container.children, [first, b, middle, a, last]);
+      assert.deepEqual(animations.slice(4).map(animation => animation.row), [first, b, middle, a, last]);
+      assert.equal(animations[5].frames[0].transform, 'translateY(-96px)');
+      assert.equal(animations[7].frames[0].transform, 'translateY(-192px)');
+      assert.equal(completed, false);
+      animations.slice(4).forEach(animation => animation.finish());
+    }
+    await refresh;
+    assert.deepEqual(container.children, [first, b, middle, a, last]);
+    assert.equal(completed, true);
+    if (!duration) assert.equal(animations.length, 0);
+
+    animations.length = 0;
+    context.nextRows = [];
+    const clear = vm.runInContext('updateArrivalRows(container, nextRows, duration)', context);
+    if (duration) {
+      assert.equal(animations.length, 5);
+      animations.forEach(animation => animation.finish());
+    }
+    await clear;
+    assert.deepEqual(container.children, []);
+
+    animations.length = 0;
+    context.nextRows = [first, middle];
+    const initial = vm.runInContext('updateArrivalRows(container, nextRows, duration)', context);
+    await new Promise(setImmediate);
+    if (duration) {
+      assert.deepEqual(animations.map(animation => animation.row), [first, middle]);
+      animations.forEach(animation => animation.finish());
+    }
+    await initial;
+    assert.deepEqual(container.children, [first, middle]);
+    if (!duration) assert.equal(animations.length, 0);
+  });
+}
+
 test('refresh age counts elapsed seconds, resets on success, and uses one interval', () => {
   let now = 10000;
   let tick;

@@ -5,10 +5,12 @@ async function updateArrivalRows(container, nextRows, duration) {
   const removed = Array.from(existing.values()).filter(row => !nextKeys.has(row.dataset.key));
 
   await Promise.all(removed.map(async row => {
-    await row.animate([
-      { height: `${row.getBoundingClientRect().height}px`, transform: 'translateY(0)', overflow: 'hidden', boxSizing: 'border-box' },
-      { height: '0px', paddingTop: '0px', paddingBottom: '0px', transform: 'translateY(-100%)', overflow: 'hidden', boxSizing: 'border-box' },
-    ], options).finished;
+    if (duration) {
+      await row.animate([
+        { height: `${row.getBoundingClientRect().height}px`, transform: 'translateY(0)', overflow: 'hidden', boxSizing: 'border-box' },
+        { height: '0px', paddingTop: '0px', paddingBottom: '0px', transform: 'translateY(-100%)', overflow: 'hidden', boxSizing: 'border-box' },
+      ], options).finished;
+    }
     row.remove();
     existing.delete(row.dataset.key);
   }));
@@ -24,8 +26,24 @@ async function updateArrivalRows(container, nextRows, duration) {
     patchArrivalNode(row, next);
     return row;
   });
-  rows.forEach((row, index) => {
+  const retained = rows.filter(row => !inserted.has(row));
+  retained.forEach((row, index) => {
     if (container.children[index] !== row) {
+      container.insertBefore(row, container.children[index] || null);
+    }
+  });
+  await Promise.all(retained.map(row => {
+    const distance = positions.get(row) - row.getBoundingClientRect().top;
+    if (!distance || !duration) return Promise.resolve();
+    return row.animate([
+      { transform: `translateY(${distance}px)` },
+      { transform: 'translateY(0)' },
+    ], options).finished;
+  }));
+
+  retained.forEach(row => positions.set(row, row.getBoundingClientRect().top));
+  rows.forEach((row, index) => {
+    if (inserted.has(row)) {
       container.insertBefore(row, container.children[index] || null);
     }
   });
