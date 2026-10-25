@@ -53,7 +53,7 @@ for (const page of ['index', 'reduced-format']) {
     assert.equal(container.innerHTML, '');
     assert.equal(animations.length, 1);
     assert.equal(animations[0].rows.length, 0);
-    assert.equal(animations[0].duration, 200);
+    assert.equal(animations[0].duration, 300);
     container.innerHTML = 'last successful arrivals';
     context.fetch = async () => { throw new Error('Network unavailable'); };
     await vm.runInContext('fetchArrivals()', context);

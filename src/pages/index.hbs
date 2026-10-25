@@ -246,7 +246,7 @@
       refreshInProgress = true;
       const container = document.getElementById('arrivalContainer');
       const filterMessage = document.getElementById('filterMessage');
-      const slideDuration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 200;
+      const slideDuration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 300;
 
       const params = getUrlParams();
       const trainWalkTime = Number(params.trainWalkTime || params.walkTime || 0);

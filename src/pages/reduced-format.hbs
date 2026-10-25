@@ -255,7 +255,7 @@
       const container = document.getElementById('arrivalContainer');
       const filterInfo = document.getElementById('filterInfo');
       const filterMessage = document.getElementById('filterMessage');
-      const slideDuration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 200;
+      const slideDuration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 300;
 
       const params = new URLSearchParams(window.location.search);
       const trainWalkTime = Number(params.get('trainWalkTime') || params.get('walkTime') || 0);
