@@ -343,7 +343,7 @@
               ? `Bus #${arrival.vehicleId} ${arrival.direction} at ${arrival.stationName}`
               : `${arrival.routeNameFull} #${arrival.routeNumber} at ${arrival.stationName} to`}</span>
             <span class="train-entry-dest">
-              ${arrival.route === 'Bus' ? `Route #${arrival.routeNumber} to ${arrival.destination}` : arrival.destination}
+              ${arrival.route === 'Bus' ? `#${arrival.routeNumber} to ${arrival.destination}` : arrival.destination}
               ${['Midway', "O'Hare"].includes(arrival.destination) ? '<img src="/images/icon_ttairport.svg" alt="Airport" style="height: 2.5rem; vertical-align: middle;" />' : ''}
               ${[true].includes(isHolidayTrain) ? '<img src="/images/candycane.svg" alt="Airport" style="height: 2.5rem; vertical-align: middle;" />' : ''}
               ${[true].includes(isHolidayTrain) ? '<img src="images/santa-sleigh.svg" alt="Santas Sleigh" style="height: 2.5rem; vertical-align: middle;" />' : ''}
